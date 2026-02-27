@@ -11,9 +11,10 @@ pygame.display.set_caption('Dynamic Path Finding Agent')
 # ask user for grid size
 # keeping it like a square so don't have to deal
 # with height variables
-size = int(input("Please give size for grid: "))
+# size = int(input("Please give size for grid: "))
 
-screen = pygame.display.set_mode((size, size))
+WIDTH = 800
+WIN = pygame.display.set_mode((WIDTH, WIDTH))
 
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
@@ -26,7 +27,7 @@ ORANGE = (255, 165, 0)
 GREY = (128, 128, 128)
 TURQUOISE = (64, 224, 208)
 
-class node:
+class Node:
     def __init__(self, row, col, width, total_rows):
         self.row = row
         self. col = col
@@ -57,7 +58,10 @@ class node:
         return self.color == PURPLE
     
     def reset(self):
-        return self.color == WHITE
+        self.color = WHITE
+    
+    def make_start(self):
+        self.color = ORANGE
     
     def make_open(self):
         self.color = GREEN
@@ -83,14 +87,100 @@ class node:
     # lt means less than and it is being used to compare two nodes
     def __lt__(self, other):
         return False
+    
+# using manhattan distance
+def hueristic(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    return abs(x1 - x2) + abs(y1 - y2)
 
-running = True
-while running:
-    screen.fill((0, 0, 0))
+def make_grid(rows, width):
+    grid = []
+    gap = width // rows    # width of cube/node
+    for i in range(rows):
+        grid.append([])
+        for j in range(rows):
+            node = Node(i, j, gap, rows)
+            grid[i].append(node)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    return grid
 
+def draw_grid(win, rows, width):
+    gap = width // rows
+    for i in range(rows):
+        pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
+        for j in range(rows):
+            pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
+    
+def draw(win, grid, rows, width):
+    # fill white color
+    win.fill(WHITE)
 
+    # draw white nodes
+    for row in grid:
+        for node in row:
+            node.draw(win)
+
+    # draw grey lines
+    draw_grid(win, rows, width)
     pygame.display.update()
+    
+# mouse click position
+def get_clicked_pos(pos, rows, width):
+    gap = width // rows
+    x, y = pos
+
+    row = x // gap  
+    col = y // gap
+
+    return row, col
+
+def main(win, width):
+    ROWS = 50
+    grid = make_grid(ROWS, width)
+
+    # start and end positions
+    start = None
+    end = None
+
+    run = True           # if we are running the main loop
+    started = False      # if we actually started the algorithm
+    while run:
+        draw(win, grid, ROWS, width)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            
+            # if algorithm has started then user shouldn't press 
+            # anything other than quit button of window
+            if started:
+                continue
+            
+            if pygame.mouse.get_pressed()[0]:   # left mouse button
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                node = grid[row][col]
+                if not start and node != end:
+                    start = node
+                    start.make_start()
+
+                elif not end and node != start:
+                    end = node
+                    end.make_end()
+
+                elif node != end and node != start:
+                    node.make_barrier()
+                
+            elif pygame.mouse.get_pressed()[2]:   # right mouse button
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                node = grid[row][col]
+                node.reset()
+                if node == start:
+                    start = None
+                elif node == end:
+                    end = None
+
+    pygame.quit()
+
+main(WIN, WIDTH)
