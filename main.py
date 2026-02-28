@@ -105,6 +105,12 @@ def hueristic(p1, p2):
     x2, y2 = p2
     return abs(x1 - x2) + abs(y1 - y2)
 
+def reconstruct_path(came_from, current, draw):
+    while current in came_from:
+        current = came_from[current]
+        current.make_path()
+        draw()
+
 def algorithm(draw, grid, start, end):
     count = 0
     open_set = PriorityQueue()
@@ -127,6 +133,8 @@ def algorithm(draw, grid, start, end):
         open_set_hash.remove(current)
 
         if current == end:
+            reconstruct_path(came_from, end, draw)
+            end.make_end()
             return True
         
         for neighbor in current.neighbors:
@@ -199,17 +207,12 @@ def main(win, width):
     end = None
 
     run = True           # if we are running the main loop
-    started = False      # if we actually started the algorithm
+
     while run:
         draw(win, grid, ROWS, width)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            
-            # if algorithm has started then user shouldn't press 
-            # anything other than quit button of window
-            if started:
-                continue
             
             if pygame.mouse.get_pressed()[0]:   # left mouse button
                 pos = pygame.mouse.get_pos()
@@ -237,12 +240,17 @@ def main(win, width):
                     end = None
 
             if event.type == pygame.KEYDOWN:
-                if event == pygame.K_SPACE and not started:
+                if event.key == pygame.K_SPACE and start and end:
                     for row in grid:
                         for node in row:
                             node.update_neighbors(grid)
 
                     algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+                
+                if event.key == pygame.K_c:
+                    start = None
+                    end = None
+                    grid = make_grid(ROWS, width)
 
     pygame.quit()
 
