@@ -111,6 +111,7 @@ def reconstruct_path(came_from, current, draw):
         current.make_path()
         draw()
 
+# a star algorithm
 def algorithm(draw, grid, start, end):
     count = 0
     open_set = PriorityQueue()
@@ -152,6 +153,45 @@ def algorithm(draw, grid, start, end):
 
         draw()
         
+        if current != start:
+            current.make_closed()
+
+    return False
+
+# greedy best first seach algorithm
+def greedy_algorithm(draw, grid, start, end):
+    count = 0
+    open_set = PriorityQueue()
+    # priority only based on heuristic (h(n))
+    open_set.put((hueristic(start.get_pos(), end.get_pos()), count, start))
+
+    # tracking path
+    came_from = {}
+    open_set_hash = {start}
+
+    while not open_set.empty():
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+
+        current = open_set.get()[2]
+        open_set_hash.remove(current)
+
+        if current == end:
+            reconstruct_path(came_from, end, draw)
+            end.make_end()
+            return True
+        
+        for neighbor in current.neighbors:
+            if neighbor not in came_from:
+                came_from[neighbor] = current
+                count += 1
+                open_set.put((hueristic(neighbor.get_pos(), end.get_pos()), count, neighbor))
+                open_set_hash.add(neighbor)
+                neighbor.make_open()
+
+        draw()
+
         if current != start:
             current.make_closed()
 
@@ -207,12 +247,22 @@ def main(win, width):
     end = None
 
     run = True           # if we are running the main loop
+    selected_algorithm = None
 
     while run:
         draw(win, grid, ROWS, width)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+
+            # select algorithm at start
+            if event.type == pygame.KEYDOWN and not selected_algorithm:
+                if event.key == pygame.K_a:
+                    selected_algorithm = "A"
+                    print("A* selected")
+                if event.key == pygame.K_g:
+                    selected_algorithm = "G"
+                    print("Greedy Best First Search selected")
             
             if pygame.mouse.get_pressed()[0]:   # left mouse button
                 pos = pygame.mouse.get_pos()
@@ -240,16 +290,20 @@ def main(win, width):
                     end = None
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and start and end:
+                if event.key == pygame.K_SPACE and start and end and selected_algorithm:
                     for row in grid:
                         for node in row:
                             node.update_neighbors(grid)
 
-                    algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+                    if selected_algorithm == "A":
+                        algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+                    else:
+                        greedy_algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
                 
                 if event.key == pygame.K_c:
                     start = None
                     end = None
+                    selected_algorithm = None
                     grid = make_grid(ROWS, width)
 
     pygame.quit()
